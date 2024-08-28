@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vested Options Calculator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+        background-color: #f4f4f4;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      form {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+      }
+
+      input[type="number"],
+      input[type="date"] {
+        width: calc(100% - 20px); /* Subtract the padding from the width */
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; /* Ensures padding and border are included in width */
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: #218838;
+      }
+
+      .result {
+        margin-top: 20px;
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 4px;
+        text-align: left;
+      }
+
+      .result p {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Vested Options Calculator</h1>
+
+    <form id="vestingForm">
+      <label for="totalOptions">Total Options Granted:</label>
+      <input
+        type="number"
+        id="totalOptions"
+        placeholder="Enter total options granted"
+        required
+      />
+
+      <label for="vestingStart">Vesting Commencement Date:</label>
+      <input type="date" id="vestingStart" required />
+
+      <label for="cliffPeriod">Cliff Period (in months):</label>
+      <input type="number" id="cliffPeriod" value="12" required />
+
+      <label for="optionPrice">Option Price per Share (£):</label>
+      <input
+        type="number"
+        id="optionPrice"
+        step="0.00001"
+        value="0.00001"
+        required
+      />
+
+      <label for="calculationDate">Calculation Date:</label>
+      <input type="date" id="calculationDate" required />
+
+      <button type="button" onclick="calculateVestedOptions()">
+        Calculate Vested Options
+      </button>
+    </form>
+
+    <div class="result" id="result">
+      <!-- Result will be displayed here -->
+    </div>
+
+    <script>
+      function calculateVestedOptions() {
+        // Get input values
+        const totalOptions = parseInt(
+          document.getElementById("totalOptions").value
+        );
+        const vestingStart = new Date(
+          document.getElementById("vestingStart").value
+        );
+        const cliffPeriod = parseInt(
+          document.getElementById("cliffPeriod").value
+        );
+        const optionPrice = parseFloat(
+          document.getElementById("optionPrice").value
+        );
+        const calculationDate = new Date(
+          document.getElementById("calculationDate").value
+        );
+
+        // Calculate the cliff vesting (25% after the cliff period)
+        const cliffVestingDate = new Date(vestingStart);
+        cliffVestingDate.setMonth(vestingStart.getMonth() + cliffPeriod);
+        const cliffVestedOptions = Math.floor(totalOptions * 0.25);
+
+        // Calculate the total months after the cliff period up to the calculation date
+        const monthsAfterCliff = Math.floor(
+          (calculationDate.getFullYear() - cliffVestingDate.getFullYear()) *
+            12 +
+            (calculationDate.getMonth() - cliffVestingDate.getMonth()) +
+            (calculationDate.getDate() >= vestingStart.getDate() ? 0 : -1)
+        );
+
+        // Monthly vesting for remaining options
+        const remainingOptions = totalOptions - cliffVestedOptions;
+        const totalVestingMonths = 48; // The full vesting period is 48 months
+        const monthlyVestingOptions = Math.floor(
+          remainingOptions / (totalVestingMonths - cliffPeriod)
+        );
+
+        // Calculate vested options
+        let vestedOptions = 0;
+        let output = "";
+
+        if (calculationDate >= cliffVestingDate) {
+          vestedOptions = cliffVestedOptions;
+          output += `<p>Cliff Vesting: ${cliffVestedOptions} options vested after ${cliffPeriod} months.</p>`;
+
+          const additionalVestedOptions =
+            Math.min(monthsAfterCliff, totalVestingMonths - cliffPeriod) *
+            monthlyVestingOptions;
+          vestedOptions += additionalVestedOptions;
+
+          output += `<p>Monthly Vesting: ${monthlyVestingOptions} options vest each month after the cliff.</p>`;
+          output += `<p>Total Monthly Vested Options (over ${monthsAfterCliff} months): ${additionalVestedOptions}</p>`;
+        } else {
+          output += `<p>As of the calculation date, the cliff period has not been reached.</p>`;
+        }
+
+        // Calculate the total payment required to exercise the vested options
+        const totalPayment = vestedOptions * optionPrice;
+
+        // Display total vested options and payment amount
+        output += `<p><strong>Total Vested Options as of ${calculationDate.toDateString()}: ${vestedOptions}</strong></p>`;
+        output += `<p><strong>Total Payment to Exercise Vested Options: £${totalPayment.toFixed(
+          5
+        )}</strong></p>`;
+        document.getElementById("result").innerHTML = output;
+      }
+    </script>
+  </body>
+</html>
